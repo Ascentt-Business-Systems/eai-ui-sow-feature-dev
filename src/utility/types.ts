@@ -1,0 +1,20 @@
+export type ThemeContextType = {
+  ModelType: string;
+  TripDistance: number;
+  AccelFB: number;
+  AccelLR: number;
+  Angular_Velocity: number;
+  TirePressureFL: number;
+  TirePressureFR: number;
+  TirePressureRL: number;
+  TirePressureRR: number;
+  WheelSpeedFL: number;
+  WheelSpeedFR: number;
+  WheelSpeedRL: number;
+  WheelSpeedRR: number;
+  TripTime: string;
+  Speed: number;
+  EngineRPM: number | null | undefined;
+  BrakePedalPressure: number | null | undefined;
+  AmbientTemp_A: number | undefined;
+};
