@@ -1,97 +1,50 @@
-import { Box, Button, styled, Typography, useTheme } from "@mui/material";
-import { FileUploadState } from "api-store/file-upload/slice";
-import FileUploadIcon from "assets/FileUploadIcon";
-import { useSelector } from "react-redux";
+import React, { useState, ChangeEvent } from "react";
+import AWS from "aws-sdk";
 
-const VisuallyHiddenInput = styled("input")({
-  clip: "rect(0 0 0 0)",
-  clipPath: "inset(50%)",
-  height: 1,
-  overflow: "hidden",
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  whiteSpace: "nowrap",
-  width: 1,
-});
+const FileUpload: React.FC = () => {
+  const [file, setFile] = useState<File | null>(null);
 
-const FileDrop = ({ handleClick }: any) => {
-  const theme = useTheme();
-  const { isUploading } = useSelector(
-    (state: { fileUpload: FileUploadState }) => state.fileUpload
-  );
+  AWS.config.update({
+    accessKeyId:process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+  });
+
+  const s3 = new AWS.S3();
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+    }
+  };
+
+  const handleUpload = () => {
+    if (!file) return;
+
+    const params: AWS.S3.PutObjectRequest = {
+      Bucket: process.env.AWS_BUCKET_NAME! ,
+      Key: file.name,
+      Body: file,
+      ContentType: file.type,
+    };
+
+    s3.upload(params, (err, data) => {
+      if (err) {
+        console.error("Error uploading file:", err);
+      } else {
+        alert("File uploaded successfully!");
+        console.log("File URL:", data.Location);
+      }
+    });
+  };
 
   return (
-    <Box flex={1}>
-      <Button
-        component="label"
-        onChange={handleClick}
-        variant="contained"
-        tabIndex={-1}
-        color={"primary"}
-        sx={{ borderRadius: 20 }}
-        disabled={isUploading}
-        startIcon={
-          <FileUploadIcon
-            color={theme.palette.common.white}
-            height={24}
-            width={24}
-          />
-        }
-      >
-        <Typography variant="button" color={theme.palette.common.white}>
-          Upload file
-        </Typography>
-        <VisuallyHiddenInput
-          type="file"
-          accept=".pdf"
-          multiple
-          disabled={isUploading}
-        />
-      </Button>
-      {/* <input
-        type="file"
-        onChange={isUploading ? () => {} : handleClick}
-        accept=".pdf"
-        multiple
-        disabled={isUploading}
-        style={{ display: "none" }}
-        id="file-upload"
-      />
-      <label htmlFor="file-upload" style={{ flex: 1 }}>
-        <Box
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={isUploading ? () => {} : handleDrop}
-          style={{backgroundColor: isUploading ? theme.palette.action.disabled : theme.palette.common.white,}}
-          className={style.dropzone}
-        >
-          <FileUploadIcon color={theme.palette.text.disabled} height={35} width={35} />
-          <Typography
-            variant="caption"
-            color={theme.palette.text.disabled}
-            fontWeight={"bold"}
-          >
-            Drag and drop PDF files to upload
-          </Typography>
-          <Typography
-            variant="caption"
-            color={theme.palette.text.disabled}
-            fontWeight={"bold"}
-          >
-            OR
-          </Typography>
-          <Typography
-            variant="caption"
-            color={theme.palette.text.disabled}
-            fontWeight={"bold"}
-          >
-            Click here to upload PDF files
-          </Typography>
-        </Box>
-      </label> */}
-    </Box>
+    <div>
+      <input type="file" onChange={handleFileChange} />
+      <button onClick={handleUpload}>Upload to S3</button>
+    </div>
   );
 };
 
-export default FileDrop;
+export default FileUpload;

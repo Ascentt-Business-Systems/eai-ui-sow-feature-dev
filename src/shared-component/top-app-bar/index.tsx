@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import { userDataState } from "api-store/user-data/slice";
 import EAITile from "assets/EaiTile";
-import ToyotaTile from "assets/ToyotaTile";
 import User from "assets/User";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
@@ -37,19 +36,13 @@ const TopAppBar = ({ logout }: any) => {
     <AppBar position="fixed" id="topbar" sx={{ bgcolor: "transparent", boxShadow: "none", elevation: 0 }}>
       <Toolbar>
         <Box flexGrow={1} display={"flex"} alignItems={"center"}>
-          <ToyotaTile
-            color={theme.palette.error.main}
-            height={40}
-            width={40}
-            style={{ marginRight: "5px" }}
-          />
           <Typography
             variant="h6"
             noWrap
             color={theme.palette.error.main}
             fontWeight={"bolder"}
           >
-            DocuBot
+            ResumeBot
           </Typography>
         </Box>
         <Box flexGrow={0} display={"flex"}>

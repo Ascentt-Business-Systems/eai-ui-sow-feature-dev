@@ -16,11 +16,11 @@ export const useStyles = makeStyles((theme: Theme) => ({
     height: "auto",
     padding: 8,
     position: "relative",
-    backgroundColor: theme.palette.grey[300],
+    backgroundColor: 'grey',
   },
   itemContainerSuccess: {
     border: "3px solid",
-    borderColor: theme.palette.success.light,
+    borderColor: 'lightblue',
     borderOpacity: 0.2,
     borderRadius: 20,
     width: "125px",
@@ -31,7 +31,7 @@ export const useStyles = makeStyles((theme: Theme) => ({
   },
   itemContainerError: {
     border: "3px solid",
-    borderColor: theme.palette.error.light,
+    borderColor: 'lightgray',
     borderRadius: 20,
     width: "125px",
     height: "auto",

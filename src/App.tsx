@@ -30,6 +30,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AppLoader from "shared-component/app-loader";
 import TopAppBar from "shared-component/top-app-bar";
+import FileUpload from "shared-component/file-upload";
+import FileItem from "shared-component/file-item";
 import { lightTheme } from "theme/theme";
 import { REDIRECT_URL, SSO_CLIENT_ID } from "utility/constants";
 
@@ -98,7 +100,6 @@ export default function App() {
     }
   }, [accounts, dispatch, instance, inProgress, handleLogout]);
 
-  // get username, name, accesstoken, userID
   useEffect(() => {
     if (accounts.length > 0) {
       aquireToken();
@@ -106,80 +107,15 @@ export default function App() {
   }, [accounts, aquireToken]);
 
   return (
-    <IdleTimerProvider
-      timeout={1000 * 60 * 20}
-      onIdle={() => setLogoutPrompt(true)}
-    >
-      <ThemeProvider theme={lightTheme}>
-        <CssBaseline />
-        {/* <AuthenticatedTemplate>
-          <Box sx={{ display: "flex" }} id={"screen"}>
-            <TopAppBar
-              logout={() => {
-                handleLogout();
-              }}
-            />
-            <Box
-              sx={{
-                width: "100%",
-                maxHeight: `calc(100vh - 80px)`,
-                height: `calc(100vh - 80px)`,
-                minHeight: `calc(100vh - 80px)`,
-                padding: "1%",
-                marginTop: "80px",
-                // backgroundColor: "#ececec",
-              }}
-            >
-              <Home />
-            </Box>
-            <ToastContainer
-              position="bottom-left"
-              autoClose={3000}
-              hideProgressBar={true}
-              newestOnTop={true}
-              limit={3}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              pauseOnHover
-              theme={"colored"}
-            />
-          </Box>
-        </AuthenticatedTemplate> */}
-        <Dialog
-          open={logoutPrompt}
-          fullWidth
-          PaperProps={{
-            style: {
-              backgroundColor: theme.palette.common.white, // Change background color here
-            },
-          }}
-        >
-          <DialogContent>
-            <Typography>
-              The session is timed-out. You will be logged out!
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              startIcon={<Logout color={theme.palette.common.white} />}
-              variant="contained"
-              onClick={() => {
-                handleLogout();
-              }}
-              style={{
-                marginLeft: 10,
-                borderRadius: 20,
-                color: theme.palette.common.white,
-                fontWeight: "bold",
-              }}
-            >
-              OK
-            </Button>
-            {/* </Box> */}
-          </DialogActions>
-        </Dialog>
-      </ThemeProvider>
-    </IdleTimerProvider>
+    <Box sx={{display:'flex', flexDirection:'column'}}>
+      <TopAppBar
+        logout={() => {
+          handleLogout();
+        }}
+      />
+      <Box sx={{marginTop:'130px',marginLeft:'50px', display:'flex',flexDirection:'row'}}>
+        <Home/>
+      </Box>
+    </Box>
   );
 }

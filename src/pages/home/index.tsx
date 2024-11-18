@@ -2,12 +2,6 @@ import { LoadingButton } from "@mui/lab";
 import {
   Box,
   Button,
-  Divider,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
   SelectChangeEvent,
   styled,
   Typography,
@@ -28,7 +22,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import FileItem from "shared-component/file-item";
 import FileDrop from "shared-component/file-upload";
-import { CONTRACTS_LIST, MAXFILESIZE } from "utility/constants";
+import { MAXFILESIZE } from "utility/constants";
+
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -67,7 +62,6 @@ const Home = () => {
           ) {
             dispatch(
               addFile({
-                // id: `${index}`,
                 file: file,
               })
             );
@@ -187,28 +181,7 @@ const Home = () => {
           gap={1.5}
           justifyContent={"flex-start"}
         >
-          <FormControl sx={{ flex: 1 }}>
-            <InputLabel sx={{ fontWeight: "bold" }}>Contract</InputLabel>
-            <Select
-              value={submitRequest.contract_type}
-              size="small"
-              label="Contract"
-              onChange={handleContractChange}
-              sx={{ backgroundColor: theme.palette.common.white }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    backgroundColor: theme.palette.common.white, // Set your desired color here
-                  },
-                },
-              }}
-            >
-              {CONTRACTS_LIST.map((item) => {
-                return <MenuItem value={item.value} key={item.value}>{item.label}</MenuItem>;
-              })}
-            </Select>
-          </FormControl>
-          <FileDrop handleDrop={handleDrop} handleClick={handleFileChange} />
+          <FileDrop />
         </Box>
         <Box
           flex={1}
@@ -282,60 +255,6 @@ const Home = () => {
             </LoadingButton>
           ) : null}
         </Box>
-      </Box>
-      <Divider sx={{ marginTop: 1 }} />
-      <Box
-        flex={1}
-        style={{ overflowY: "auto", paddingBottom: "4px", paddingTop: "4px" }}
-      >
-        {files && files.length > 0 ? (
-          <Grid container flexWrap={"wrap"} gap={1} justifyContent={"center"}>
-            {files.map((file, index) => {
-              const k = `${file.doc.name}${index}`;
-              return (
-                <FileItem
-                  key={k}
-                  id={file.id}
-                  doc={file.doc}
-                  status={file.status}
-                  name={file.doc.name}
-                  size={`${(file.doc.size / 1048576).toFixed(2)}MB`}
-                  removeFile={() => {
-                    handleRemoveFile({
-                      path: file?.filePath,
-                      id: file.id,
-                      status: file.status,
-                    });
-                  }}
-                />
-              );
-            })}
-          </Grid>
-        ) : (
-          <Box
-            display={"flex"}
-            flexDirection={"column"}
-            alignItems={"center"}
-            justifyContent={"center"}
-            p={5}
-            height={"100%"}
-          >
-            <Upload
-              color={theme.palette.action.disabled}
-              height={35}
-              width={35}
-            />
-            <Typography
-              m={1}
-              variant={"h6"}
-              color={theme.palette.action.disabled}
-              fontWeight={"bold"}
-              textAlign={"center"}
-            >
-              No files selected
-            </Typography>
-          </Box>
-        )}
       </Box>
       <VisuallyHiddenInput
         type="file"
