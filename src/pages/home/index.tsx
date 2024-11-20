@@ -1,29 +1,15 @@
-import { LoadingButton } from "@mui/lab";
-import {
-  Box,
-  Button,
-  SelectChangeEvent,
-  styled,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import uploadQueueActions from "api-store/file-upload/action";
-import {
-  addFile,
-  FileUpload,
-  FileUploadState,
-  updateContractType,
-} from "api-store/file-upload/slice";
-import ClearFiles from "assets/ClearFiles";
-import Process from "assets/Process";
-import Upload from "assets/Upload";
-import { ChangeEvent, DragEvent, useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState, ChangeEvent, DragEvent } from "react";
+import AWS from "aws-sdk";
+import { Box, Button, Typography, styled, useTheme } from "@mui/material";
 import { toast } from "react-toastify";
-import FileItem from "shared-component/file-item";
-import FileDrop from "shared-component/file-upload";
 import { MAXFILESIZE } from "utility/constants";
 
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  url: string;
+}
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -37,132 +23,107 @@ const VisuallyHiddenInput = styled("input")({
   width: 1,
 });
 
-const Home = () => {
-  const [pendingFiles, setPendingFiles] = useState<FileUpload[]>([]);
+AWS.config.update({
+  accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY!,
+  region: process.env.REACT_APP_AWS_REGION!,
+});
+
+const s3 = new AWS.S3();
+const Home: React.FC = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [totalFileSize, setTotalFileSize] = useState<number>(0);
   const theme = useTheme();
-  const dispatch = useDispatch();
-  const { files, totalFileSize, submitRequest, isUploading, isDeleting } =
-    useSelector((state: { fileUpload: FileUploadState }) => state.fileUpload);
+
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const sFiles = event.target.files;
-
-    // Check if files are PDFs (optional)
-    if (sFiles && sFiles.length > 0) {
-      let totalSize: number = 0;
-      Array.from(sFiles).forEach((file: File) => {
-        totalSize += parseFloat((file.size / 1048576).toFixed(2));
-      });
-
-      const previouseFiles = files?.map((file) => file.doc.name);
-      if (totalSize + totalFileSize <= MAXFILESIZE) {
-        Array.from(sFiles).forEach((file: File, index: number) => {
-          if (
-            file?.type === "application/pdf" &&
-            !previouseFiles?.includes(file.name)
-          ) {
-            dispatch(
-              addFile({
-                file: file,
-              })
-            );
-          } else {
-            toast.warning("Please select PDF files only!");
-          }
-        });
-      } else {
-        toast.error(
-          `Total file size exceeded! (${(totalSize + totalFileSize).toFixed(
-            2
-          )}/${MAXFILESIZE})`
-        );
-      }
-    }
+    const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
+    addFiles(selectedFiles);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    // Fetch the files
-    const sFiles = Array.from(event.dataTransfer.files);
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    addFiles(droppedFiles);
+  };
 
-    // Check if files are PDFs (optional)
-    if (sFiles && sFiles.length > 0) {
-      let totalSize: number = 0;
-      Array.from(sFiles).forEach((file: File) => {
-        totalSize += parseFloat((file.size / 1048576).toFixed(2));
-      });
+  const addFiles = (newFiles: File[]) => {
+    const totalSize = newFiles.reduce((acc, file) => acc + file.size, totalFileSize);
+    if (totalSize > MAXFILESIZE * 1024 * 1024) {
+      toast.error(`Total file size exceeded! (${(totalSize / 1048576).toFixed(2)} MB/${MAXFILESIZE} MB)`);
+      return;
+    }
 
-      const previouseFiles = files?.map((file) => file.doc.name);
-      if (totalSize + totalFileSize <= MAXFILESIZE) {
-        Array.from(sFiles).forEach((file: File, index: number) => {
-          if (
-            file?.type === "application/pdf" &&
-            !previouseFiles?.includes(file.name)
-          ) {
-            dispatch(
-              addFile({
-                // id: `${index}`,
-                file: file,
-              })
-            );
-          } else {
-            toast.warning("Please select PDF files only!");
-          }
+    const filteredFiles = newFiles.filter(
+      (file) =>
+        file.type === "application/pdf" &&
+        !files.some((f) => f.name === file.name)
+    );
+
+    if (filteredFiles.length < newFiles.length) {
+      toast.warning("Duplicate or non-PDF files were excluded!");
+    }
+
+    setFiles((prevFiles) => [...prevFiles, ...filteredFiles]);
+    setTotalFileSize((prevSize) => prevSize + filteredFiles.reduce((acc, file) => acc + file.size, 0));
+  };
+
+  const handleUpload = async () => {
+    const newUploadedFiles: UploadedFile[] = [];
+    for (const file of files) {
+      try {
+        const params: AWS.S3.PutObjectRequest = {
+          Bucket: process.env.REACT_APP_AWS_BUCKET_NAME!,
+          Key: file.name,
+          Body: file,
+          ContentType: file.type,
+        };
+
+        const uploadResult = await s3.upload(params).promise();
+        newUploadedFiles.push({
+          name: file.name,
+          size: file.size,
+          url: uploadResult.Location,
         });
-      } else {
-        toast.error(
-          `Total file size exceeded! (${(totalSize + totalFileSize).toFixed(
-            2
-          )}/${MAXFILESIZE})`
-        );
+      } catch (error) {
+        console.error("Error uploading file:", file.name, error);
+        toast.error(`Error uploading file: ${file.name}`);
       }
     }
-  };
+      // After all files are uploaded, send the URLs to the backend
+    if (newUploadedFiles.length > 0) {
+      try {
+        // Assuming your backend API is at '/upload-files'
+        const response = await fetch("http://127.0.0.1:8000/extractinfo", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            files: newUploadedFiles.map((file) => file.url),
+          }),
+        });
 
-  // Trigger API from here
-  const handleUpload = () => {
-    dispatch(uploadQueueActions.submitRequest());
-  };
-
-  useEffect(() => {
-    setPendingFiles(files.filter((f) => f.status === "pending"));
-  }, [files]);
-
-  useEffect(() => {
-    if (pendingFiles.length > 0) {
-      dispatch(uploadQueueActions.uploadFilesInQueue());
+        const responseData = await response.json();
+        console.log(responseData);
+        if (response.ok) {
+          toast.success("Files uploaded and URLs saved successfully!");
+        } else {
+          toast.error("Error saving URLs to backend!");
+        }
+      } catch (error) {
+        console.error("Error calling the API:", error);
+        toast.error("Error calling the backend API.");
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingFiles.length]);
 
-  const handleRemoveFile = ({
-    path,
-    id,
-    status,
-  }: {
-    path?: string;
-    id: number;
-    status: string;
-  }) => {
-    dispatch(
-      uploadQueueActions.deleteSelectedFile({
-        filePath: path,
-        id,
-        status,
-      })
-    );
+    setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+    setFiles([]);
+    setTotalFileSize(0);
+    toast.success("Files uploaded successfully!");
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // This is necessary to allow for a drop
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleContractChange = (event: SelectChangeEvent) => {
-    dispatch(updateContractType(event.target.value))
-  };
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => e.preventDefault();
 
   return (
     <Box
@@ -170,98 +131,69 @@ const Home = () => {
       flexDirection={"column"}
       height={"100%"}
       onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={isUploading ? () => {} : handleDrop}
+      onDrop={handleDrop}
     >
       <Box display={"flex"} gap={1.5} p={1}>
         <Box
           flex={1}
           display={"flex"}
           alignItems={"center"}
-          gap={1.5}
           justifyContent={"flex-start"}
         >
-          <FileDrop />
+          <Button variant="contained" component="label">
+            Select Files
+            <VisuallyHiddenInput
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleFileChange}
+            />
+          </Button>
         </Box>
         <Box
           flex={1}
           display={"flex"}
           alignItems={"center"}
           justifyContent={"flex-end"}
-          gap={1}
         >
-          <Box display={"flex"} alignItems={"baseline"}>
-            <Typography variant="caption">
-              {`Total Size: ${totalFileSize.toFixed(
-                2
-              )}MB / Max Size: ${MAXFILESIZE}MB`}
-            </Typography>
-            <Typography p={1}>|</Typography>
-            <Typography variant="caption">
-              {`Total Files: ${files.length}`}
-            </Typography>
-          </Box>
-
-          <Button
-            variant="text"
-            onClick={() => {
-              dispatch(uploadQueueActions.deleteFilesInQueue());
-            }}
-            style={{
-              width: "100px",
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-            }}
-            disabled={
-              files.length === 0 ||
-              files.filter((f) => f.status !== "success").length > 0 ||
-              isDeleting
-            }
-          >
-            <ClearFiles
-              height={20}
-              width={20}
-              style={{ marginRight: "5px" }}
-              color={
-                files.length === 0 ||
-                files.filter((f) => f.status !== "success").length > 0 ||
-                isDeleting
-                  ? theme.palette.action.disabled
-                  : theme.palette.primary.main
-              }
-            />
-            <Typography variant="button" fontWeight={"bold"}>
-              Clear
-            </Typography>
-          </Button>
-          {files?.length ? (
-            <LoadingButton
-              loading={submitRequest.isLoading}
-              onClick={handleUpload}
-              loadingPosition="start"
-              startIcon={<Process color={theme.palette.common.white} />}
-              variant="contained"
-              disabled={files.filter((f) => f.status !== "success").length > 0}
-              sx={{ borderRadius: 20 }}
-            >
-              <Typography
-                variant="button"
-                fontWeight={"bold"}
-                color={theme.palette.common.white}
-              >
-                Process All PDFs
-              </Typography>
-            </LoadingButton>
-          ) : null}
+          <Typography variant="caption">
+            Total Size: {(totalFileSize / 1048576).toFixed(2)} MB / Max Size:{" "}
+            {MAXFILESIZE} MB
+          </Typography>
         </Box>
       </Box>
-      <VisuallyHiddenInput
-        type="file"
-        accept=".pdf"
-        multiple
-        disabled={isUploading}
-      />
+
+      <Box mt={2}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleUpload}
+          disabled={files.length === 0}
+        >
+          Upload to S3
+        </Button>
+      </Box>
+
+      <Box mt={2}>
+        <Typography variant="h6">Selected Files</Typography>
+        {files.map((file, index) => (
+          <Typography key={index}>
+            {file.name} - {(file.size / 1048576).toFixed(2)} MB
+          </Typography>
+        ))}
+      </Box>
+
+      <Box mt={2}>
+        <Typography variant="h6">Uploaded Files</Typography>
+        {uploadedFiles.map((file, index) => (
+          <Typography key={index}>
+            <a href={file.url} target="_blank" rel="noopener noreferrer">
+              {file.name}
+            </a>{" "}
+            - {(file.size / 1048576).toFixed(2)} MB
+          </Typography>
+        ))}
+      </Box>
     </Box>
   );
 };

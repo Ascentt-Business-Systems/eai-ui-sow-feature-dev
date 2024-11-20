@@ -12,7 +12,6 @@ import {
   useTheme,
 } from "@mui/material";
 import { userDataState } from "api-store/user-data/slice";
-import EAITile from "assets/EaiTile";
 import User from "assets/User";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
@@ -46,31 +45,6 @@ const TopAppBar = ({ logout }: any) => {
           </Typography>
         </Box>
         <Box flexGrow={0} display={"flex"}>
-          <Box mr={2} display={"flex"} alignItems={"center"}>
-            <Typography
-              variant="caption"
-              color={theme.palette.primary.light}
-              fontWeight={"bold"}
-            >
-              powered by
-            </Typography>
-            <Box
-              sx={{
-                height: 73,
-                width: 73,
-                backgroundColor: theme.palette.common.white,
-                borderRadius: "50%",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                marginLeft: "5px",
-                marginTop: "5px",
-                marginBottom: "5px",
-              }}
-            >
-              <EAITile height={70} width={70} />
-            </Box>
-          </Box>
           <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
             <Avatar
               sx={{
